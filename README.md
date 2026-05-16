@@ -1,14 +1,16 @@
 # Dev Container Features — pixi
 
-A [Dev Container Feature](https://containers.dev/implementors/features/) that
-installs the [`pixi`](https://pixi.sh) package manager.
+[Dev Container Features](https://containers.dev/implementors/features/) for the
+[`pixi`](https://pixi.sh) package manager.
 
 ## Contents
 
-| Path        | Purpose                                  |
-|-------------|------------------------------------------|
-| `src/pixi`  | The **pixi** Feature.                    |
-| `test/pixi` | Automated tests for the Feature.         |
+| Path            | Purpose                                          |
+|-----------------|--------------------------------------------------|
+| `src/pixi`      | The **pixi** Feature — installs the pixi binary. |
+| `src/bioconda`  | The **bioconda** Feature — configures channels.  |
+| `test/pixi`     | Automated tests for the **pixi** Feature.        |
+| `test/bioconda` | Automated tests for the **bioconda** Feature.    |
 
 ## `pixi` Feature
 
@@ -63,6 +65,35 @@ identifier instead — for example:
 }
 ```
 
+## `bioconda` Feature
+
+Configures the [Bioconda](https://bioconda.github.io) channel for `pixi`.
+
+The Feature writes a system-wide pixi config at `/etc/pixi/config.toml` that
+sets `default-channels` to `conda-forge` and `bioconda`. These become the
+default channels for `pixi init` and `pixi global install`, so newly created
+workspaces can resolve Bioconda packages without further configuration.
+`conda-forge` is listed first because Bioconda depends on it and expects it to
+take precedence.
+
+This Feature only configures channels — it does not install the `pixi` binary.
+Pair it with the `pixi` Feature; `installsAfter` ensures `bioconda` runs after
+`pixi` when both are present.
+
+### Usage
+
+```jsonc
+{
+    "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+    "features": {
+        "./src/pixi": {},
+        "./src/bioconda": {}
+    }
+}
+```
+
+The `bioconda` Feature has no options.
+
 ## Testing
 
 Tests run with the [`@devcontainers/cli`](https://github.com/devcontainers/cli):
@@ -71,20 +102,25 @@ Tests run with the [`@devcontainers/cli`](https://github.com/devcontainers/cli):
 npm install -g @devcontainers/cli
 
 devcontainer features test \
-    --features pixi \
+    --features pixi --features bioconda \
     --base-image mcr.microsoft.com/devcontainers/base:ubuntu \
     .
 ```
 
 This executes:
 
-- `test/pixi/test.sh` — default options (`version: latest`).
+- `test/pixi/test.sh` — `pixi` with default options (`version: latest`).
 - `test/pixi/pinned_version.sh` — the `pinned_version` scenario from
   `test/pixi/scenarios.json`, which pins `version` to an exact release.
+- `test/bioconda/test.sh` — `bioconda` on its own; checks the pixi config is
+  written.
+- `test/bioconda/with_pixi.sh` — the `with_pixi` scenario from
+  `test/bioconda/scenarios.json`, which installs both Features and checks that
+  the installed `pixi` binary reads the Bioconda channel config.
 
 ## Notes
 
-- `install.sh` is a POSIX `/bin/sh` script and runs as `root` during the image
-  build, per the Dev Container Features specification.
+- Each `install.sh` is a POSIX `/bin/sh` script and runs as `root` during the
+  image build, per the Dev Container Features specification.
 - The bundled `pixi` binary is distributed under the
   [pixi license](https://github.com/prefix-dev/pixi/blob/main/LICENSE).
