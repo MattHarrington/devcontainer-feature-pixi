@@ -1,0 +1,26 @@
+{
+    "name": "pixi",
+    "id": "pixi",
+    "version": "1.0.0",
+    "description": "Installs the pixi package manager (https://pixi.sh) as a system-wide binary.",
+    "documentationURL": "https://pixi.sh",
+    "options": {
+        "version": {
+            "type": "string",
+            "proposals": [
+                "latest"
+            ],
+            "default": "latest",
+            "description": "Version of pixi to install. Use 'latest' or a semver such as '0.68.0' (a leading 'v' is optional)."
+        }
+    },
+    "keywords": [
+        "pixi",
+        "package-manager",
+        "conda",
+        "python"
+    ],
+    "installsAfter": [
+        "ghcr.io/devcontainers/features/common-utils"
+    ]
+}

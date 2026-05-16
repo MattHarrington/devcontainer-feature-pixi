@@ -1,0 +1,4 @@
+# This repository's scripts run inside Linux dev containers.
+# Normalize all text files to LF so install.sh / test scripts never get
+# CRLF line endings (a CRLF shebang breaks the script in a container).
+* text=auto eol=lf
