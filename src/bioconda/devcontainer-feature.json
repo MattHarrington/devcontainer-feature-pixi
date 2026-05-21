@@ -1,0 +1,18 @@
+{
+    "name": "Bioconda channel for pixi",
+    "id": "bioconda",
+    "version": "1.0.0",
+    "description": "Configures the Bioconda channel for the pixi package manager. Pair with the 'pixi' Feature.",
+    "documentationURL": "https://bioconda.github.io",
+    "keywords": [
+        "pixi",
+        "bioconda",
+        "conda",
+        "bioinformatics",
+        "package-manager"
+    ],
+    "installsAfter": [
+        "ghcr.io/devcontainers/features/common-utils",
+        "pixi"
+    ]
+}
