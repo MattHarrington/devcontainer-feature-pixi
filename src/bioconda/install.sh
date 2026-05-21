@@ -30,7 +30,7 @@ fi
 # ---------------------------------------------------------------------------
 echo "Writing Bioconda channel config to ${PIXI_CONFIG_FILE}"
 mkdir -p "$(dirname "${PIXI_CONFIG_FILE}")"
-cat > "${PIXI_CONFIG_FILE}" <<'EOF'
+cat >"${PIXI_CONFIG_FILE}" <<'EOF'
 # Managed by the 'bioconda' Dev Container Feature.
 default-channels = ["conda-forge", "bioconda"]
 EOF
