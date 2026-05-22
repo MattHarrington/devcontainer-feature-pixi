@@ -16,11 +16,13 @@ set -e
 # each option to this script as an uppercased environment variable.
 # ---------------------------------------------------------------------------
 PIXI_VERSION="${VERSION:-latest}"
+PIXI_BIOCONDA="${BIOCONDA:-false}"
 
 INSTALL_DIR="/usr/local/bin"
 GITHUB_REPO="prefix-dev/pixi"
+PIXI_CONFIG_FILE="/etc/pixi/config.toml"
 
-echo "Activating feature 'pixi' (requested version: ${PIXI_VERSION})"
+echo "Activating feature 'pixi' (requested version: ${PIXI_VERSION}, bioconda: ${PIXI_BIOCONDA})"
 
 if [ "$(id -u)" -ne 0 ]; then
     echo "(!) This feature's install.sh must be run as root." >&2
@@ -113,4 +115,23 @@ cp "${tmp_dir}/pixi" "${INSTALL_DIR}/pixi"
 chmod 0755 "${INSTALL_DIR}/pixi"
 
 echo "pixi installed: $("${INSTALL_DIR}/pixi" --version)"
+
+# ---------------------------------------------------------------------------
+# Optionally configure the Bioconda channel by writing a system-wide pixi
+# config at /etc/pixi/config.toml. This is the lowest-priority config location
+# pixi reads, so it applies to every user in the container. 'default-channels'
+# seeds the channels for 'pixi init' and 'pixi global install'. Bioconda depends
+# on conda-forge and expects it to take precedence, so conda-forge is first.
+# ---------------------------------------------------------------------------
+if [ "${PIXI_BIOCONDA}" = "true" ]; then
+    echo "Writing Bioconda channel config to ${PIXI_CONFIG_FILE}"
+    mkdir -p "$(dirname "${PIXI_CONFIG_FILE}")"
+    cat >"${PIXI_CONFIG_FILE}" <<'EOF'
+# Managed by the 'pixi' Dev Container Feature ('bioconda' option).
+default-channels = ["conda-forge", "bioconda"]
+EOF
+    chmod 0644 "${PIXI_CONFIG_FILE}"
+    echo "Bioconda channel configured for $("${INSTALL_DIR}/pixi" --version)."
+fi
+
 echo "Feature 'pixi' done. 'pixi' is on PATH for all users at ${INSTALL_DIR}/pixi."
