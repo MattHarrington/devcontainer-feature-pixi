@@ -22,10 +22,10 @@ INSTALL_DIR="/usr/local/bin"
 GITHUB_REPO="prefix-dev/pixi"
 PIXI_CONFIG_FILE="/etc/pixi/config.toml"
 
-echo "Activating feature 'pixi' (requested version: ${PIXI_VERSION}, bioconda: ${PIXI_BIOCONDA})"
+printf "Activating feature 'pixi' (requested version: %s, bioconda: %s)\n" "${PIXI_VERSION}" "${PIXI_BIOCONDA}"
 
 if [ "$(id -u)" -ne 0 ]; then
-    echo "(!) This feature's install.sh must be run as root." >&2
+    printf "(!) This feature's install.sh must be run as root.\n" >&2
     exit 1
 fi
 
@@ -48,7 +48,7 @@ install_packages() {
     elif command -v yum >/dev/null 2>&1; then
         yum install -y "$@"
     else
-        echo "(!) No supported package manager found; cannot install: $*" >&2
+        printf "(!) No supported package manager found; cannot install: %s\n" "$*" >&2
         return 1
     fi
 }
@@ -59,7 +59,7 @@ if ! command -v curl >/dev/null 2>&1 && ! command -v wget >/dev/null 2>&1; then
     missing="${missing} ca-certificates curl"
 fi
 if [ -n "${missing}" ]; then
-    echo "Installing prerequisites:${missing}"
+    printf "Installing prerequisites: %s\n" "${missing}"
     # Word-splitting ${missing} into separate package arguments is intentional.
     # shellcheck disable=SC2086
     install_packages ${missing}
@@ -73,7 +73,7 @@ case "${machine}" in
     x86_64 | amd64)  pixi_arch="x86_64" ;;
     aarch64 | arm64) pixi_arch="aarch64" ;;
     *)
-        echo "(!) Unsupported architecture: ${machine}" >&2
+        printf "(!) Unsupported architecture: %s\n" "${machine}" >&2
         exit 1
         ;;
 esac
@@ -97,7 +97,7 @@ fi
 tmp_dir="$(mktemp -d)"
 trap 'rm -rf "${tmp_dir}"' EXIT
 
-echo "Downloading pixi from: ${url}"
+printf "Downloading pixi from: %s\n" "${url}"
 if command -v curl >/dev/null 2>&1; then
     curl -fsSL "${url}" -o "${tmp_dir}/${asset}"
 else
@@ -107,14 +107,14 @@ fi
 tar -xzf "${tmp_dir}/${asset}" -C "${tmp_dir}"
 
 if [ ! -f "${tmp_dir}/pixi" ]; then
-    echo "(!) The 'pixi' binary was not found inside ${asset}." >&2
+    printf "(!) The 'pixi' binary was not found inside %s.\n" "${asset}" >&2
     exit 1
 fi
 
 cp "${tmp_dir}/pixi" "${INSTALL_DIR}/pixi"
 chmod 0755 "${INSTALL_DIR}/pixi"
 
-echo "pixi installed: $("${INSTALL_DIR}/pixi" --version)"
+printf "pixi installed: %s\n" "$("${INSTALL_DIR}/pixi" --version)"
 
 # ---------------------------------------------------------------------------
 # Optionally configure the Bioconda channel by writing a system-wide pixi
@@ -124,14 +124,14 @@ echo "pixi installed: $("${INSTALL_DIR}/pixi" --version)"
 # on conda-forge and expects it to take precedence, so conda-forge is first.
 # ---------------------------------------------------------------------------
 if [ "${PIXI_BIOCONDA}" = "true" ]; then
-    echo "Writing Bioconda channel config to ${PIXI_CONFIG_FILE}"
+    printf "Writing Bioconda channel config to %s\n" "${PIXI_CONFIG_FILE}"
     mkdir -p "$(dirname "${PIXI_CONFIG_FILE}")"
     cat >"${PIXI_CONFIG_FILE}" <<'EOF'
 # Managed by the 'pixi' Dev Container Feature ('bioconda' option).
 default-channels = ["conda-forge", "bioconda"]
 EOF
     chmod 0644 "${PIXI_CONFIG_FILE}"
-    echo "Bioconda channel configured for $("${INSTALL_DIR}/pixi" --version)."
+    printf "Bioconda channel configured for %s.\n" "$("${INSTALL_DIR}/pixi" --version)"
 fi
 
-echo "Feature 'pixi' done. 'pixi' is on PATH for all users at ${INSTALL_DIR}/pixi."
+printf "Feature 'pixi' done. 'pixi' is on PATH for all users at %s/pixi.\n" "${INSTALL_DIR}"
