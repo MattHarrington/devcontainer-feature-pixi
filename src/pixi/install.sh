@@ -134,4 +134,15 @@ EOF
     printf "Bioconda channel configured for %s.\n" "$("${INSTALL_DIR}/pixi" --version)"
 fi
 
+# ---------------------------------------------------------------------------
+# Fix ownership of the .pixi mount point so the dev container user can write
+# to it. Docker always creates named-volume mount points owned by root; the
+# dev container CLI exposes the non-root user via _REMOTE_USER.
+# ---------------------------------------------------------------------------
+if [ -n "${_REMOTE_USER}" ] && [ "${_REMOTE_USER}" != "root" ]; then
+    pixi_mount="${containerWorkspaceFolder:-/workspaces}/.pixi"
+    mkdir -p "${pixi_mount}"
+    chown "${_REMOTE_USER}" "${pixi_mount}"
+fi
+
 printf "Feature 'pixi' done. 'pixi' is on PATH for all users at %s/pixi.\n" "${INSTALL_DIR}"
