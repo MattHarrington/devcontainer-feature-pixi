@@ -4,12 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this repo is
 
-A monorepo of [Dev Container Features](https://containers.dev/implementors/features/) for the [pixi](https://pixi.sh) package manager. There is no application code and no build system (no `package.json`); each Feature is a `devcontainer-feature.json` manifest plus a POSIX `install.sh`. The "build" is the dev container CLI consuming a Feature; "test" is the CLI installing it into a real container and running assertions.
+A repo holding a single [Dev Container Feature](https://containers.dev/implementors/features/) for the [pixi](https://pixi.sh) package manager. There is no application code and no build system (no `package.json`); the Feature is a `devcontainer-feature.json` manifest plus a POSIX `install.sh`. The "build" is the dev container CLI consuming the Feature; "test" is the CLI installing it into a real container and running assertions.
 
-Two Features live here:
+One Feature lives here:
 
-- **`src/pixi`** — installs the `pixi` binary system-wide to `/usr/local/bin/pixi` by downloading the prebuilt static musl release from `prefix-dev/pixi`.
-- **`src/bioconda`** — does **not** install pixi; it only writes a system-wide pixi config at `/etc/pixi/config.toml` (`default-channels = ["conda-forge", "bioconda"]`).
+- **`src/pixi`** — installs the `pixi` binary system-wide to `/usr/local/bin/pixi` by downloading the prebuilt static musl release from `prefix-dev/pixi`. Its `bioconda` boolean option (default `false`) additionally writes a system-wide pixi config at `/etc/pixi/config.toml` (`default-channels = ["conda-forge", "bioconda"]`).
 
 ## Commands
 
@@ -18,13 +17,7 @@ Tests require the dev container CLI and Docker:
 ```sh
 npm install -g @devcontainers/cli
 
-# Run all tests for both Features
-devcontainer features test \
-    --features pixi --features bioconda \
-    --base-image mcr.microsoft.com/devcontainers/base:ubuntu \
-    .
-
-# Run tests for a single Feature
+# Run all tests for the pixi Feature (default-options test + every scenario)
 devcontainer features test --features pixi \
     --base-image mcr.microsoft.com/devcontainers/base:ubuntu .
 ```
@@ -55,9 +48,9 @@ Every test script sources `dev-container-features-test-lib` (bundled with the CL
 - **Options reach `install.sh` as environment variables.** The dev container CLI uppercases the option id and replaces every non-`\w` character with `_` (so option `version` → `$VERSION`, and an option id like `exclude-newer` → `$EXCLUDE_NEWER`). Read them with a default, e.g. `PIXI_VERSION="${VERSION:-latest}"`.
 - **LF line endings are mandatory** (`.gitattributes` enforces `eol=lf`). A CRLF shebang silently breaks the script inside a Linux container — never introduce CRLF.
 
-## How the two Features relate
+## The bioconda option
 
-`bioconda` declares `installsAfter: ["…/common-utils", "pixi"]`. When both Features are present, pixi installs first, so bioconda's config at `/etc/pixi/config.toml` is read by the already-installed binary. `/etc/pixi/config.toml` is pixi's lowest-priority (system-wide) config location, which is why writing there applies the channels to every user. The `with_pixi` scenario exists specifically to verify this ordering end-to-end (`pixi config list` shows the bioconda channel).
+The `bioconda` option (default `false`) is handled inside `src/pixi/install.sh` itself, *after* the binary is installed in the same script — so the config it writes at `/etc/pixi/config.toml` is read by the just-installed pixi. `/etc/pixi/config.toml` is pixi's lowest-priority (system-wide) config location, which is why writing there applies the channels to every user. Bioconda depends on conda-forge and expects it to take precedence, so `default-channels` lists `conda-forge` first. The `bioconda` scenario verifies this end-to-end (`pixi config list` shows the bioconda channel).
 
 Note that pixi's global `config.toml` only supports a fixed set of keys (channels, mirrors, TLS, pypi-config, etc.). Per-workspace settings such as `exclude-newer` are **not** valid there — they live only in a project's `pixi.toml`/`pyproject.toml` `[workspace]` table.
 
@@ -66,3 +59,4 @@ Note that pixi's global `config.toml` only supports a fixed set of keys (channel
 - Architecture is mapped to the release asset name: `x86_64`/`amd64` → `x86_64`, `aarch64`/`arm64` → `aarch64`; other arches error out. Asset is `pixi-<arch>-unknown-linux-musl.tar.gz`.
 - `version: latest` uses GitHub's `releases/latest/download/…` redirect; a pinned version targets `releases/download/v<version>/…` with a leading `v` stripped/added so both `0.68.0` and `v0.68.0` work.
 - Missing `curl`/`wget`, `tar`, and `ca-certificates` are installed on demand before download.
+- When `bioconda=true`, the script writes `/etc/pixi/config.toml` after the binary install (see "The bioconda option" above).

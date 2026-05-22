@@ -1,9 +1,0 @@
-{
-    "with_pixi": {
-        "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
-        "features": {
-            "pixi": {},
-            "bioconda": {}
-        }
-    }
-}
