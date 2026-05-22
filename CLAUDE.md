@@ -8,7 +8,7 @@ A repo holding a single [Dev Container Feature](https://containers.dev/implement
 
 One Feature lives here:
 
-- **`src/pixi`** — installs the `pixi` binary system-wide to `/usr/local/bin/pixi` by downloading the prebuilt static musl release from `prefix-dev/pixi`. Its `bioconda` boolean option (default `false`) additionally writes a system-wide pixi config at `/etc/pixi/config.toml` (`default-channels = ["conda-forge", "bioconda"]`).
+- **`src/pixi`** — installs the `pixi` binary system-wide to `/usr/local/bin/pixi` by downloading the prebuilt static musl release from `prefix-dev/pixi`. Its `bioconda` boolean option (default `false`) additionally writes a system-wide pixi config at `/etc/pixi/config.toml` (`default-channels = ["conda-forge", "bioconda"]`). It also mounts a named Docker volume at the workspace `.pixi` so the package cache persists across rebuilds (see "The .pixi mount").
 
 ## Commands
 
@@ -53,6 +53,14 @@ Every test script sources `dev-container-features-test-lib` (bundled with the CL
 The `bioconda` option (default `false`) is handled inside `src/pixi/install.sh` itself, *after* the binary is installed in the same script — so the config it writes at `/etc/pixi/config.toml` is read by the just-installed pixi. `/etc/pixi/config.toml` is pixi's lowest-priority (system-wide) config location, which is why writing there applies the channels to every user. Bioconda depends on conda-forge and expects it to take precedence, so `default-channels` lists `conda-forge` first. The `bioconda` scenario verifies this end-to-end (`pixi config list` shows the bioconda channel).
 
 Note that pixi's global `config.toml` only supports a fixed set of keys (channels, mirrors, TLS, pypi-config, etc.). Per-workspace settings such as `exclude-newer` are **not** valid there — they live only in a project's `pixi.toml`/`pyproject.toml` `[workspace]` table.
+
+## The .pixi mount
+
+The Feature declares a `mounts` entry in `devcontainer-feature.json` that attaches a **named Docker volume** (`pixi-${devcontainerId}`) at `${containerWorkspaceFolder}/.pixi`, so pixi's package cache and per-project environments persist across container rebuilds.
+
+It is deliberately a named volume, **not a host bind mount**. `.pixi` holds extracted conda packages, and conda package names can collide on a case-insensitive filesystem (macOS/Windows hosts), which corrupts a bind-mounted cache. A named volume always lives on Docker's case-sensitive Linux filesystem, sidestepping this. The tradeoff is that the cache persists but is not shared with / visible from the host. `${devcontainerId}` keys the volume to this dev container so it is stable across rebuilds without colliding with other projects.
+
+The `mount` scenario verifies this end-to-end (`.pixi` exists in the workspace and appears as its own mount point in `/proc/mounts`).
 
 ## pixi binary install specifics (src/pixi/install.sh)
 
