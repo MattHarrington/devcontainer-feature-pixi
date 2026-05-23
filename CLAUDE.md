@@ -60,6 +60,8 @@ The Feature declares a `mounts` entry in `devcontainer-feature.json` that attach
 
 It is deliberately a named volume, **not a host bind mount**. `.pixi` holds extracted conda packages, and conda package names can collide on a case-insensitive filesystem (macOS/Windows hosts), which corrupts a bind-mounted cache. A named volume always lives on Docker's case-sensitive Linux filesystem, sidestepping this. The tradeoff is that the cache persists but is not shared with / visible from the host. `${devcontainerId}` keys the volume to this dev container so it is stable across rebuilds without colliding with other projects.
 
+Docker creates named-volume mount points owned by `root`, so a non-root dev container user cannot write to `.pixi` as mounted. Ownership is fixed by a **`postCreateCommand`** declared in `devcontainer-feature.json` (`sudo chown "$(id -un):$(id -gn)" "${containerWorkspaceFolder}/.pixi"`), **not** in `install.sh`. This must run post-create rather than at build time: `install.sh` runs as root during the image build *before* the volume is mounted, so it cannot see or chown the mount. `postCreateCommand` runs on the live container after the volume is attached, as the (non-root) `remoteUser` — hence `sudo` (passwordless sudo is provided by the standard base images / the `common-utils` Feature this one `installsAfter`). Unlike `install.sh`, lifecycle commands are part of the Feature metadata, so the CLI *does* substitute `${containerWorkspaceFolder}` there.
+
 The `mount` scenario verifies this end-to-end (`.pixi` exists in the workspace and appears as its own mount point in `/proc/mounts`).
 
 ## pixi binary install specifics (src/pixi/install.sh)
