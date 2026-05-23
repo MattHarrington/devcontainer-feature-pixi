@@ -4,11 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this repo is
 
-A repo holding a single [Dev Container Feature](https://containers.dev/implementors/features/) for the [pixi](https://pixi.sh) package manager. There is no application code and no build system (no `package.json`); the Feature is a `devcontainer-feature.json` manifest plus a POSIX `install.sh`. The "build" is the dev container CLI consuming the Feature; "test" is the CLI installing it into a real container and running assertions.
+A repo holding a single [Dev Container Feature](https://containers.dev/implementors/features/) for the [pixi](https://pixi.sh) package manager. There is no application code and no build system (no `package.json`); the Feature is a `devcontainer-feature.json` manifest plus two POSIX scripts — `install.sh` (build time) and `post-create.sh` (the `postCreateCommand` helper). The "build" is the dev container CLI consuming the Feature; "test" is the CLI installing it into a real container and running assertions.
 
 One Feature lives here:
 
-- **`src/pixi`** — installs the `pixi` binary system-wide to `/usr/local/bin/pixi` by downloading the prebuilt static musl release from `prefix-dev/pixi`. Its `bioconda` boolean option (default `false`) additionally writes a system-wide pixi config at `/etc/pixi/config.toml` (`default-channels = ["conda-forge", "bioconda"]`). It also mounts a named Docker volume at the workspace `.pixi` so the package cache persists across rebuilds (see "The .pixi mount").
+- **`src/pixi`** — installs the `pixi` binary system-wide to `/usr/local/bin/pixi` by downloading the prebuilt static musl release from `prefix-dev/pixi`. Its `bioconda` boolean option (default `false`) additionally writes a system-wide pixi config at `/etc/pixi/config.toml` (`default-channels = ["conda-forge", "bioconda"]`). It also mounts a named Docker volume at the workspace `.pixi` so the package cache persists across rebuilds, and on first create bootstraps the workspace as a pixi project (see "The .pixi mount" and "Workspace bootstrap").
 
 ## Commands
 
@@ -28,8 +28,9 @@ Local pre-commit validation used in this repo (no linter is configured beyond th
 
 ```sh
 python3 -m json.tool src/pixi/devcontainer-feature.json   # JSON well-formedness
-sh -n src/pixi/install.sh                                 # shell syntax check
+sh -n src/pixi/install.sh src/pixi/post-create.sh         # shell syntax check
 shellcheck src/pixi/install.sh                            # if shellcheck is installed
+shellcheck -s sh src/pixi/post-create.sh                  # if shellcheck is installed
 ```
 
 ## Test harness conventions (requires reading test/ + the CLI docs together)
@@ -60,9 +61,17 @@ The Feature declares a `mounts` entry in `devcontainer-feature.json` that attach
 
 It is deliberately a named volume, **not a host bind mount**. `.pixi` holds extracted conda packages, and conda package names can collide on a case-insensitive filesystem (macOS/Windows hosts), which corrupts a bind-mounted cache. A named volume always lives on Docker's case-sensitive Linux filesystem, sidestepping this. The tradeoff is that the cache persists but is not shared with / visible from the host. `${devcontainerId}` keys the volume to this dev container so it is stable across rebuilds without colliding with other projects.
 
-Docker creates named-volume mount points owned by `root`, so a non-root dev container user cannot write to `.pixi` as mounted. Ownership is fixed by a **`postCreateCommand`** declared in `devcontainer-feature.json` (`sudo chown "$(id -un):$(id -gn)" "${containerWorkspaceFolder}/.pixi"`), **not** in `install.sh`. This must run post-create rather than at build time: `install.sh` runs as root during the image build *before* the volume is mounted, so it cannot see or chown the mount. `postCreateCommand` runs on the live container after the volume is attached, as the (non-root) `remoteUser` — hence `sudo` (passwordless sudo is provided by the standard base images / the `common-utils` Feature this one `installsAfter`). Unlike `install.sh`, lifecycle commands are part of the Feature metadata, so the CLI *does* substitute `${containerWorkspaceFolder}` there.
+Docker creates named-volume mount points owned by `root`, so a non-root dev container user cannot write to `.pixi` as mounted. Ownership is fixed by the **`postCreateCommand`** declared in `devcontainer-feature.json`, **not** in `install.sh`. This must run post-create rather than at build time: `install.sh` runs as root during the image build *before* the volume is mounted, so it cannot see or chown the mount. `postCreateCommand` runs on the live container after the volume is attached, as the (non-root) `remoteUser` — hence `sudo` (passwordless sudo is provided by the standard base images / the `common-utils` Feature this one `installsAfter`). Unlike `install.sh`, lifecycle commands are part of the Feature metadata, so the CLI *does* substitute `${containerWorkspaceFolder}` there. The chown is the first thing the `post-create.sh` helper does (see "Workspace bootstrap").
 
 The `mount` scenario verifies this end-to-end (`.pixi` exists in the workspace and appears as its own mount point in `/proc/mounts`).
+
+## Workspace bootstrap
+
+`postCreateCommand` no longer runs an inline `chown`; it invokes a shipped helper, `/usr/local/share/pixi/post-create.sh "${containerWorkspaceFolder}"`. `install.sh` copies `src/pixi/post-create.sh` to that fixed path at build time because the Feature's source files only exist in the temporary build context — they are gone by the time lifecycle commands run, so the helper must already live in the image and be referenced by absolute path.
+
+The helper (POSIX `/bin/sh`, runs as the `remoteUser`) does two things in order: (1) chown the mounted `.pixi` as described above, then (2) bootstrap the workspace as a pixi project. It treats the workspace as an **existing** project if there is a `pixi.toml` *or* a `pyproject.toml` containing a `[tool.pixi…]` table (matched with `grep`), in which case it runs `pixi install`; otherwise it runs `pixi init`. Checking `pyproject.toml` too avoids scaffolding a stray `pixi.toml` next to a pyproject-based pixi project.
+
+The `init_install` scenario verifies this. Because `postCreateCommand` has already run by the time test scripts execute, the scenario also invokes the installed helper directly in scratch dirs to exercise both branches deterministically. The install-branch checks assert on the helper's printed branch decision (and that the existing manifest is untouched) rather than on `pixi install` completing, since a full solve needs the network.
 
 ## pixi binary install specifics (src/pixi/install.sh)
 

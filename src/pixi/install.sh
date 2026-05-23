@@ -21,6 +21,8 @@ PIXI_BIOCONDA="${BIOCONDA:-false}"
 INSTALL_DIR="/usr/local/bin"
 GITHUB_REPO="prefix-dev/pixi"
 PIXI_CONFIG_FILE="/etc/pixi/config.toml"
+POST_CREATE_SRC="$(dirname "$0")/post-create.sh"
+POST_CREATE_DEST="/usr/local/share/pixi/post-create.sh"
 
 printf "Activating feature 'pixi' (requested version: %s, bioconda: %s)\n" "${PIXI_VERSION}" "${PIXI_BIOCONDA}"
 
@@ -133,5 +135,16 @@ EOF
     chmod 0644 "${PIXI_CONFIG_FILE}"
     printf "Bioconda channel configured for %s.\n" "$("${INSTALL_DIR}/pixi" --version)"
 fi
+
+# ---------------------------------------------------------------------------
+# Install the postCreateCommand helper to a fixed path. The feature's source
+# files are only present in this temporary build context, so the helper is
+# copied into the image here; devcontainer-feature.json's 'postCreateCommand'
+# then invokes it by absolute path on the live container (after the .pixi
+# volume is mounted).
+# ---------------------------------------------------------------------------
+mkdir -p "$(dirname "${POST_CREATE_DEST}")"
+cp "${POST_CREATE_SRC}" "${POST_CREATE_DEST}"
+chmod 0755 "${POST_CREATE_DEST}"
 
 printf "Feature 'pixi' done. 'pixi' is on PATH for all users at %s/pixi.\n" "${INSTALL_DIR}"
