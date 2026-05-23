@@ -20,5 +20,11 @@
         "features": {
             "pixi": {}
         }
+    },
+    "init_install": {
+        "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+        "features": {
+            "pixi": {}
+        }
     }
 }

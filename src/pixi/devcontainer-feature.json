@@ -1,7 +1,7 @@
 {
     "name": "pixi",
     "id": "pixi",
-    "version": "1.2.0",
+    "version": "1.3.0",
     "description": "Installs the pixi package manager (https://pixi.sh) as a system-wide binary.",
     "documentationURL": "https://pixi.sh",
     "options": {
@@ -34,7 +34,7 @@
             "type": "volume"
         }
     ],
-    "postCreateCommand": "sudo chown \"$(id -un):$(id -gn)\" \"${containerWorkspaceFolder}/.pixi\"",
+    "postCreateCommand": "/usr/local/share/pixi/post-create.sh \"${containerWorkspaceFolder}\"",
     "installsAfter": [
         "ghcr.io/devcontainers/features/common-utils"
     ]
