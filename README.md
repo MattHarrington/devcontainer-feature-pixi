@@ -49,28 +49,14 @@ means it is owned by you. A complete example is shown under [Usage](#usage).
 
 ### Usage
 
-Reference the Feature from your `devcontainer.json`. While developing in this
-repository, use the local path:
+Reference the Feature from your `devcontainer.json` by its registry identifier:
 
 ```jsonc
 {
     "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
     "initializeCommand": "mkdir -p ${localWorkspaceFolder}/.pixi",
     "features": {
-        "./src/pixi": {}
-    }
-}
-```
-
-Once the Feature is published to an OCI registry, reference it by its
-identifier instead — for example:
-
-```jsonc
-{
-    "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
-    "initializeCommand": "mkdir -p ${localWorkspaceFolder}/.pixi",
-    "features": {
-        "ghcr.io/OWNER/feature-pixi/pixi:1": {
+        "ghcr.io/MattHarrington/devcontainer-feature-pixi/pixi:1": {
             "version": "latest"
         }
     }
@@ -89,7 +75,7 @@ identifier instead — for example:
 
 ```jsonc
 "features": {
-    "./src/pixi": {
+    "ghcr.io/MattHarrington/devcontainer-feature-pixi/pixi:1": {
         "version": "0.68.0"
     }
 }
@@ -107,7 +93,7 @@ because Bioconda depends on it and expects it to take precedence.
 
 ```jsonc
 "features": {
-    "./src/pixi": {
+    "ghcr.io/MattHarrington/devcontainer-feature-pixi/pixi:1": {
         "bioconda": true
     }
 }
@@ -131,7 +117,7 @@ writes it into the `pixi.toml` that `pixi init` generates.
 
 ```jsonc
 "features": {
-    "./src/pixi": {
+    "ghcr.io/MattHarrington/devcontainer-feature-pixi/pixi:1": {
         "exclude-newer": "7d"
     }
 }
