@@ -1,7 +1,7 @@
 {
     "name": "pixi",
     "id": "pixi",
-    "version": "1.4.0",
+    "version": "0.4.0",
     "description": "Installs the pixi package manager (https://pixi.sh) as a system-wide binary.",
     "documentationURL": "https://pixi.sh",
     "options": {
