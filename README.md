@@ -79,10 +79,11 @@ identifier instead — for example:
 
 ### Options
 
-| Option     | Type    | Default  | Description                                                                                         |
-|------------|---------|----------|-----------------------------------------------------------------------------------------------------|
-| `version`  | string  | `latest` | Version of pixi to install. Use `latest` or a semver such as `0.68.0` (a leading `v` is optional).  |
-| `bioconda` | boolean | `false`  | Configure the Bioconda channel by writing a system-wide pixi config (see [The `bioconda` option](#the-bioconda-option)). |
+| Option          | Type    | Default  | Description                                                                                         |
+|-----------------|---------|----------|-----------------------------------------------------------------------------------------------------|
+| `version`       | string  | `latest` | Version of pixi to install. Use `latest` or a semver such as `0.68.0` (a leading `v` is optional).  |
+| `bioconda`      | boolean | `false`  | Configure the Bioconda channel by writing a system-wide pixi config (see [The `bioconda` option](#the-bioconda-option)). |
+| `exclude-newer` | string  | `0d`     | Package "cooldown" for a newly scaffolded project (see [The `exclude-newer` option](#the-exclude-newer-option)). Proposals: `7d`, `14d`, `30d`. `0d` (the default) disables it. |
 
 ### Example: pin a version
 
@@ -115,7 +116,53 @@ because Bioconda depends on it and expects it to take precedence.
 `/etc/pixi/config.toml` is pixi's lowest-priority (system-wide) config location,
 which is why the channels apply to every user. Note that per-workspace settings
 such as `exclude-newer` are **not** valid there — those live only in a project's
-`pixi.toml`/`pyproject.toml` `[workspace]` table.
+`pixi.toml`/`pyproject.toml` `[workspace]` table, which is exactly where the
+[`exclude-newer` option](#the-exclude-newer-option) writes them.
+
+### The `exclude-newer` option
+
+`exclude-newer` sets a package "cooldown": pixi excludes any package published
+more recently than the cutoff from its solves, which reduces the risk of pulling
+in a freshly published (and possibly compromised) release. It is a per-workspace
+setting that lives in the `[workspace]` table of a project's `pixi.toml` — it is
+**not** valid in the system-wide `/etc/pixi/config.toml` — so the Feature applies
+it where the value belongs: the [workspace-bootstrap helper](#workspace-bootstrap)
+writes it into the `pixi.toml` that `pixi init` generates.
+
+```jsonc
+"features": {
+    "./src/pixi": {
+        "exclude-newer": "7d"
+    }
+}
+```
+
+With the example above, a workspace the Feature scaffolds gets:
+
+```toml
+[workspace]
+exclude-newer = "7d"
+# ...the rest of what `pixi init` writes
+```
+
+Notes:
+
+- **Only newly scaffolded projects are affected.** The value is written **only**
+  when the helper runs `pixi init` (the workspace had no manifest). If the
+  workspace already contains a `pixi.toml` or a pyproject-based pixi project, the
+  helper takes the `pixi install` branch and leaves your manifest untouched — set
+  `exclude-newer` in your own manifest in that case.
+- **`0d` (the default) disables it.** pixi treats `0d` as "the current time", i.e.
+  no real cutoff, so the Feature writes nothing for it, keeping the scaffolded
+  `pixi.toml` clean.
+- **Proposals are hints, not limits.** The `7d`/`14d`/`30d` proposals are common
+  cooldown windows, but the option is a free-form string: any value pixi accepts
+  works — another relative duration (e.g. `90d`, `1h30m`) or an absolute
+  `YYYY-MM-DD` / RFC 3339 date (e.g. `2025-01-01`). The Feature passes the value
+  through and lets pixi validate it when it solves.
+- **Requires pixi ≥ 0.67.0**, which introduced relative-duration values for
+  `exclude-newer`. The default `latest` and any recent pinned `version` satisfy
+  this; an absolute date works on older pixi too.
 
 ### The `.pixi` mount
 
@@ -180,6 +227,10 @@ scenario from `test/pixi/scenarios.json`:
 - `test/pixi/init_install.sh` — the `init_install` scenario, which checks the
   workspace-bootstrap helper takes the `pixi init` and `pixi install` branches
   correctly.
+- `test/pixi/exclude_newer.sh` — the `exclude_newer` scenario, which sets
+  `exclude-newer: 7d` and checks the helper writes the value into the
+  `[workspace]` table of a freshly scaffolded `pixi.toml`, skips the `0d`
+  default, and never edits an existing manifest.
 
 ## Notes
 
