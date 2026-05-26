@@ -20,7 +20,12 @@ The Feature downloads the prebuilt static `musl` binary directly from the
 releases. `x86_64` and `aarch64` Linux are supported. Any missing
 prerequisites (`curl`/`wget`, `tar`, `ca-certificates`) are installed
 automatically — `apt-get`, `apk`, `dnf`, `microdnf`, and `yum` base images are
-supported.
+supported. The examples below use the Ubuntu base, but all three
+[devcontainers base images](https://hub.docker.com/r/microsoft/devcontainers-base)
+— Ubuntu, Debian, and Alpine — are supported, as are any Dev Container templates
+built on top of those three base images. More generally, any base image that
+supplies `sudo` (which the `postCreateCommand` uses to chown the `.pixi` mount)
+will probably work too.
 
 On first create the Feature also mounts a persistent package cache at the
 workspace `.pixi` and bootstraps the workspace as a pixi project — see
@@ -43,7 +48,7 @@ the container starts with an `initializeCommand`:
 the only lifecycle hook that runs early enough. Without it — and if you don't
 already have a `.pixi` directory in your workspace — Docker creates the host-side
 mount point itself, owned by `root`. That leaves a `root`-owned `.pixi`
-directory in your workspace after you stop the dev container, which you might
+directory in your workspace after you stop the Dev Container, which you might
 then need elevated privileges to remove. Creating the directory yourself first
 means it is owned by you. A complete example is shown under [Usage](#usage).
 
@@ -68,8 +73,8 @@ Reference the Feature from your `devcontainer.json` by its registry identifier:
 | Option          | Type    | Default  | Description                                                                                         |
 |-----------------|---------|----------|-----------------------------------------------------------------------------------------------------|
 | `version`       | string  | `latest` | Version of pixi to install. Use `latest` or a semver such as `0.68.0` (a leading `v` is optional).  |
-| `bioconda`      | boolean | `false`  | Configure the Bioconda channel by writing a system-wide pixi config (see [The `bioconda` option](#the-bioconda-option)). |
 | `exclude-newer` | string  | `0d`     | Package "cooldown" for a newly scaffolded project (see [The `exclude-newer` option](#the-exclude-newer-option)). Proposals: `7d`, `14d`, `30d`. `0d` (the default) disables it. |
+| `bioconda`      | boolean | `false`  | Configure the Bioconda channel by writing a system-wide pixi config (see [The `bioconda` option](#the-bioconda-option)). |
 
 ### Example: pin a version
 
@@ -80,30 +85,6 @@ Reference the Feature from your `devcontainer.json` by its registry identifier:
     }
 }
 ```
-
-### The `bioconda` option
-
-Setting `bioconda` to `true` configures the
-[Bioconda](https://bioconda.github.io) channel for `pixi`. The Feature writes a
-system-wide pixi config at `/etc/pixi/config.toml` that sets `default-channels`
-to `conda-forge` and `bioconda`. These become the default channels for
-`pixi init` and `pixi global install`, so newly created workspaces can resolve
-Bioconda packages without further configuration. `conda-forge` is listed first
-because Bioconda depends on it and expects it to take precedence.
-
-```jsonc
-"features": {
-    "ghcr.io/MattHarrington/devcontainer-feature-pixi/pixi:1": {
-        "bioconda": true
-    }
-}
-```
-
-`/etc/pixi/config.toml` is pixi's lowest-priority (system-wide) config location,
-which is why the channels apply to every user. Note that per-workspace settings
-such as `exclude-newer` are **not** valid there — those live only in a project's
-`pixi.toml`/`pyproject.toml` `[workspace]` table, which is exactly where the
-[`exclude-newer` option](#the-exclude-newer-option) writes them.
 
 ### The `exclude-newer` option
 
@@ -150,6 +131,34 @@ Notes:
   `exclude-newer`. The default `latest` and any recent pinned `version` satisfy
   this; an absolute date works on older pixi too.
 
+### The `bioconda` option
+
+Setting `bioconda` to `true` configures the
+[Bioconda](https://bioconda.github.io) channel for `pixi`. The Feature writes a
+system-wide pixi config at `/etc/pixi/config.toml` that sets `default-channels`
+to `conda-forge` and `bioconda`. These become the default channels for
+`pixi init` and `pixi global install`, so newly created workspaces can resolve
+Bioconda packages without further configuration. `conda-forge` is listed first
+because Bioconda depends on it and expects it to take precedence.
+
+```jsonc
+"features": {
+    "ghcr.io/MattHarrington/devcontainer-feature-pixi/pixi:1": {
+        "bioconda": true
+    }
+}
+```
+
+`/etc/pixi/config.toml` is pixi's lowest-priority (system-wide) config location,
+which is why the channels apply to every user. Because the channels live in this
+system-wide config — not in a project manifest — the option **never modifies an
+existing `pixi.toml`**; it only sets the default channels that a newly scaffolded
+project inherits. A workspace that already has a `pixi.toml` keeps whatever
+channels it declares. Note also that per-workspace settings such as
+`exclude-newer` are **not** valid in `/etc/pixi/config.toml` — those live only in
+a project's `pixi.toml`/`pyproject.toml` `[workspace]` table, which is exactly
+where the [`exclude-newer` option](#the-exclude-newer-option) writes them.
+
 ### The `.pixi` mount
 
 The Feature mounts a **named Docker volume** (`pixi-${devcontainerId}`) at
@@ -171,6 +180,12 @@ the cache is writable even when the host-side mount point ended up owned by
 `root`. This is why the `initializeCommand` above matters: it controls
 ownership of the directory left behind on the host, which the in-container chown
 cannot fix.
+
+If you already have a `.pixi` directory at the workspace root, Docker mounts its
+volume **on top of** it, masking the original contents for the life of the
+container — only the volume is visible at that path while the container runs.
+When the container shuts down, Docker unmounts the volume and your original
+`.pixi` directory becomes visible again, untouched.
 
 > **Remember:** add
 > `"initializeCommand": "mkdir -p ${localWorkspaceFolder}/.pixi"` to your
