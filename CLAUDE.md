@@ -8,7 +8,7 @@ A repo holding a single [Dev Container Feature](https://containers.dev/implement
 
 One Feature lives here:
 
-- **`src/pixi`** — installs the `pixi` binary system-wide to `/usr/local/bin/pixi` by downloading the prebuilt static musl release from `prefix-dev/pixi`. Its `bioconda` boolean option (default `false`) additionally writes a system-wide pixi config at `/etc/pixi/config.toml` (`default-channels = ["conda-forge", "bioconda"]`). It also mounts a named Docker volume at the workspace `.pixi` so the package cache persists across rebuilds, and on first create bootstraps the workspace as a pixi project (see "The .pixi mount" and "Workspace bootstrap").
+- **`src/pixi`** — installs the `pixi` binary system-wide to `/usr/local/bin/pixi` by downloading the prebuilt static musl release from `prefix-dev/pixi`. Its `bioconda` boolean option (default `false`) additionally writes a system-wide pixi config at `/etc/pixi/config.toml` (`default-channels = ["conda-forge", "bioconda"]`). Its `exclude-newer` string option (default `0d`) records a package-cooldown cutoff in a newly scaffolded project's `pixi.toml` (see "The exclude-newer option"). It also mounts a named Docker volume at the workspace `.pixi` so the package cache persists across rebuilds, and on first create bootstraps the workspace as a pixi project (see "The .pixi mount" and "Workspace bootstrap").
 
 ## Commands
 
@@ -23,6 +23,8 @@ devcontainer features test --features pixi \
 ```
 
 There is no separate runner for an individual scenario; `--features <name>` runs that Feature's `test.sh` plus every scenario script (see test layout below).
+
+**Before opening a PR, run the full suite above and confirm every test passes.** The CLI prints a per-scenario summary at the end; every line must read `✅ Passed` (the default-options `pixi` test plus each scenario — currently `pinned_version`, `bioconda`, `mount`, `init_install`, `exclude_newer`). Do not open a PR while any check fails. The local pre-commit validation below is necessary but **not** sufficient — it checks syntax and JSON well-formedness, not behavior, so it does not replace this run.
 
 Local pre-commit validation used in this repo (no linter is configured beyond these):
 
@@ -41,7 +43,9 @@ The `devcontainer features test` command discovers tests by filename convention 
 - `test/<feature>/scenarios.json` — maps a **scenario name** to a `devcontainer.json` fragment (base image + features with explicit options).
 - `test/<feature>/<scenario>.sh` — the test body for that scenario. **The filename must match the scenario key in `scenarios.json`** (e.g. the `pinned_version` key pairs with `pinned_version.sh`). Adding a scenario means editing `scenarios.json` *and* adding the matching `.sh`.
 
-Every test script sources `dev-container-features-test-lib` (bundled with the CLI) for the `check "<label>" <command>` and `reportResults` helpers. Tests run as `root`.
+Every test script sources `dev-container-features-test-lib` (bundled with the CLI) for the `check "<label>" <command>` and `reportResults` helpers.
+
+**Do not assume tests run as `root`.** A scenario's checks run as that scenario image's configured user, which on the `mcr.microsoft.com/devcontainers/base:ubuntu` base is the **non-root `vscode` `remoteUser`**, not root. A test that writes to a root-owned path (e.g. a file `install.sh` created under `/usr/local/share`) will fail with `Permission denied` — this actually bit the `exclude_newer` scenario. Tests that need a privileged write must use `sudo` (passwordless sudo is available) or, better, avoid mutating installed image files at all (the `exclude_newer` scenario runs a *copy* of the helper with a repointed value-file path instead — see "The exclude-newer option").
 
 ## Feature authoring conventions
 
@@ -53,7 +57,18 @@ Every test script sources `dev-container-features-test-lib` (bundled with the CL
 
 The `bioconda` option (default `false`) is handled inside `src/pixi/install.sh` itself, *after* the binary is installed in the same script — so the config it writes at `/etc/pixi/config.toml` is read by the just-installed pixi. `/etc/pixi/config.toml` is pixi's lowest-priority (system-wide) config location, which is why writing there applies the channels to every user. Bioconda depends on conda-forge and expects it to take precedence, so `default-channels` lists `conda-forge` first. The `bioconda` scenario verifies this end-to-end (`pixi config list` shows the bioconda channel).
 
-Note that pixi's global `config.toml` only supports a fixed set of keys (channels, mirrors, TLS, pypi-config, etc.). Per-workspace settings such as `exclude-newer` are **not** valid there — they live only in a project's `pixi.toml`/`pyproject.toml` `[workspace]` table.
+Note that pixi's global `config.toml` only supports a fixed set of keys (channels, mirrors, TLS, pypi-config, etc.). Per-workspace settings such as `exclude-newer` are **not** valid there — they live only in a project's `pixi.toml`/`pyproject.toml` `[workspace]` table. The `exclude-newer` option below is applied there, not via the global config.
+
+## The exclude-newer option
+
+`exclude-newer` (string, default `0d`) sets a package "cooldown" — pixi excludes packages published more recently than the cutoff from its solves. Because it is a per-workspace `[workspace]` key (and **not** valid in `/etc/pixi/config.toml`, unlike `bioconda`), it cannot be handled in `install.sh` the way `bioconda` is. Instead it is applied by the **post-create helper**, which writes it into the `pixi.toml` that `pixi init` generates.
+
+Two non-obvious mechanics:
+
+- **The value is baked into the image, not passed as a lifecycle argument.** Option values reach `install.sh` as env vars (`exclude-newer` → `$EXCLUDE_NEWER`), but lifecycle command strings like `postCreateCommand` only substitute a fixed set of variables (`${containerWorkspaceFolder}`, `${devcontainerId}`) — *not* arbitrary option values. So `install.sh` writes `$EXCLUDE_NEWER` to `/usr/local/share/pixi/exclude-newer` at build time (the same reason `post-create.sh` itself is copied into the image), and the helper reads it from there on the live container.
+- **`init` branch only; `0d` is a no-op.** The helper writes the key **only** in its `pixi init` branch (a project it scaffolds), never into a manifest the user brought — that would clobber an intentional value. The default `0d` means "current time" (no real cutoff), so the helper skips writing it entirely, leaving the scaffolded `pixi.toml` identical to today's. The key is inserted *inside* the `[workspace]` table (right after its header, via `awk`) — **not** appended at end of file, because `pixi init` emits further tables (`[tasks]`, `[dependencies]`) after `[workspace]`, so an EOF append would land under the wrong table. A light `case` validation rejects values containing characters outside `[0-9A-Za-z:.+-]` (so a value cannot break out of the quoted TOML string); pixi does the real semantic validation when it solves, which keeps date/duration formats forward-compatible. Relative durations need pixi ≥ 0.67.0.
+
+The `exclude_newer` scenario verifies this (see test layout). Like `init_install`, it drives the helper directly in scratch dirs to exercise every branch deterministically without the network. The baked value file is root-owned and the scenario's checks run as the non-root `remoteUser` (see "Test harness conventions"), so to test a value other than the real baked one (e.g. the `0d`-disabled branch) it runs a *copy* of the helper whose `EXCLUDE_NEWER_FILE` constant is repointed at a writable scratch file — never overwriting the installed file.
 
 ## The .pixi mount
 
@@ -71,7 +86,7 @@ The `mount` scenario verifies this end-to-end (`.pixi` exists in the workspace a
 
 `postCreateCommand` no longer runs an inline `chown`; it invokes a shipped helper, `/usr/local/share/pixi/post-create.sh "${containerWorkspaceFolder}"`. `install.sh` copies `src/pixi/post-create.sh` to that fixed path at build time because the Feature's source files only exist in the temporary build context — they are gone by the time lifecycle commands run, so the helper must already live in the image and be referenced by absolute path.
 
-The helper (POSIX `/bin/sh`, runs as the `remoteUser`) does two things in order: (1) chown the mounted `.pixi` as described above, then (2) bootstrap the workspace as a pixi project. It treats the workspace as an **existing** project if there is a `pixi.toml` *or* a `pyproject.toml` containing a `[tool.pixi…]` table (matched with `grep`), in which case it runs `pixi install`; otherwise it runs `pixi init`. Checking `pyproject.toml` too avoids scaffolding a stray `pixi.toml` next to a pyproject-based pixi project.
+The helper (POSIX `/bin/sh`, runs as the `remoteUser`) does two things in order: (1) chown the mounted `.pixi` as described above, then (2) bootstrap the workspace as a pixi project. It treats the workspace as an **existing** project if there is a `pixi.toml` *or* a `pyproject.toml` containing a `[tool.pixi…]` table (matched with `grep`), in which case it runs `pixi install`; otherwise it runs `pixi init`. Checking `pyproject.toml` too avoids scaffolding a stray `pixi.toml` next to a pyproject-based pixi project. After a `pixi init`, the helper records the `exclude-newer` option in the new `pixi.toml` (see "The exclude-newer option").
 
 The `init_install` scenario verifies this. Because `postCreateCommand` has already run by the time test scripts execute, the scenario also invokes the installed helper directly in scratch dirs to exercise both branches deterministically. The install-branch checks assert on the helper's printed branch decision (and that the existing manifest is untouched) rather than on `pixi install` completing, since a full solve needs the network.
 
@@ -81,3 +96,4 @@ The `init_install` scenario verifies this. Because `postCreateCommand` has alrea
 - `version: latest` uses GitHub's `releases/latest/download/…` redirect; a pinned version targets `releases/download/v<version>/…` with a leading `v` stripped/added so both `0.68.0` and `v0.68.0` work.
 - Missing `curl`/`wget`, `tar`, and `ca-certificates` are installed on demand before download.
 - When `bioconda=true`, the script writes `/etc/pixi/config.toml` after the binary install (see "The bioconda option" above).
+- It writes the `exclude-newer` option value to `/usr/local/share/pixi/exclude-newer` so the post-create helper can read it on the live container (see "The exclude-newer option" above).

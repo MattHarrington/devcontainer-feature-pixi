@@ -17,14 +17,17 @@ set -e
 # ---------------------------------------------------------------------------
 PIXI_VERSION="${VERSION:-latest}"
 PIXI_BIOCONDA="${BIOCONDA:-false}"
+PIXI_EXCLUDE_NEWER="${EXCLUDE_NEWER:-0d}"
 
 INSTALL_DIR="/usr/local/bin"
 GITHUB_REPO="prefix-dev/pixi"
 PIXI_CONFIG_FILE="/etc/pixi/config.toml"
 POST_CREATE_SRC="$(dirname "$0")/post-create.sh"
 POST_CREATE_DEST="/usr/local/share/pixi/post-create.sh"
+EXCLUDE_NEWER_FILE="/usr/local/share/pixi/exclude-newer"
 
-printf "Activating feature 'pixi' (requested version: %s, bioconda: %s)\n" "${PIXI_VERSION}" "${PIXI_BIOCONDA}"
+printf "Activating feature 'pixi' (requested version: %s, bioconda: %s, exclude-newer: %s)\n" \
+    "${PIXI_VERSION}" "${PIXI_BIOCONDA}" "${PIXI_EXCLUDE_NEWER}"
 
 if [ "$(id -u)" -ne 0 ]; then
     printf "(!) This feature's install.sh must be run as root.\n" >&2
@@ -146,5 +149,16 @@ fi
 mkdir -p "$(dirname "${POST_CREATE_DEST}")"
 cp "${POST_CREATE_SRC}" "${POST_CREATE_DEST}"
 chmod 0755 "${POST_CREATE_DEST}"
+
+# ---------------------------------------------------------------------------
+# Persist the 'exclude-newer' option for the postCreateCommand helper. Option
+# values reach this script as environment variables, but lifecycle command
+# strings only substitute a fixed set of variables (not arbitrary options), so
+# the value cannot be passed to post-create.sh as an argument. Bake it into the
+# image here (as install.sh already does for the helper itself) so the helper
+# can read it on the live container; it applies the value to 'pixi init'.
+# ---------------------------------------------------------------------------
+printf '%s\n' "${PIXI_EXCLUDE_NEWER}" >"${EXCLUDE_NEWER_FILE}"
+chmod 0644 "${EXCLUDE_NEWER_FILE}"
 
 printf "Feature 'pixi' done. 'pixi' is on PATH for all users at %s/pixi.\n" "${INSTALL_DIR}"

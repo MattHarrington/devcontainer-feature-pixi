@@ -1,7 +1,7 @@
 {
     "name": "pixi",
     "id": "pixi",
-    "version": "1.3.0",
+    "version": "1.4.0",
     "description": "Installs the pixi package manager (https://pixi.sh) as a system-wide binary.",
     "documentationURL": "https://pixi.sh",
     "options": {
@@ -17,6 +17,16 @@
             "type": "boolean",
             "default": false,
             "description": "Configure the Bioconda channel by writing a system-wide pixi config at /etc/pixi/config.toml with default-channels = [\"conda-forge\", \"bioconda\"]."
+        },
+        "exclude-newer": {
+            "type": "string",
+            "proposals": [
+                "7d",
+                "14d",
+                "30d"
+            ],
+            "default": "0d",
+            "description": "Package 'cooldown' for newly scaffolded projects: when not '0d', write exclude-newer = \"<value>\" into the [workspace] table of the pixi.toml created by 'pixi init', so packages published within that window are excluded from solves. Accepts any pixi-supported value (a relative duration such as '7d', or a YYYY-MM-DD / RFC 3339 date). '0d' (the default) disables it. Requires pixi >= 0.67.0."
         }
     },
     "keywords": [

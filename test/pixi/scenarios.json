@@ -26,5 +26,13 @@
         "features": {
             "pixi": {}
         }
+    },
+    "exclude_newer": {
+        "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+        "features": {
+            "pixi": {
+                "exclude-newer": "7d"
+            }
+        }
     }
 }
