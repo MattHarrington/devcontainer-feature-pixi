@@ -50,8 +50,18 @@ Every test script sources `dev-container-features-test-lib` (bundled with the CL
 ## Feature authoring conventions
 
 - **`install.sh` is `/bin/sh` (POSIX), not bash**, and always runs as `root` at image build time. Scripts begin with `set -e` and assert `id -u` is 0. Keep them portable across the package managers the pixi Feature already handles (`apt-get`, `apk`, `dnf`, `microdnf`, `yum`).
-- **Options reach `install.sh` as environment variables.** The dev container CLI uppercases the option id and replaces every non-`\w` character with `_` (so option `version` → `$VERSION`, and an option id like `exclude-newer` → `$EXCLUDE_NEWER`). Read them with a default, e.g. `PIXI_VERSION="${VERSION:-latest}"`.
+- **Options reach `install.sh` as environment variables.** The `devcontainer` CLI uppercases the option id and replaces every non-`\w` character with `_` (so option `version` → `$VERSION`, and an option id like `exclude-newer` → `$EXCLUDE_NEWER`). Read them with a default, e.g. `PIXI_VERSION="${VERSION:-latest}"`.
 - **LF line endings are mandatory** (`.gitattributes` enforces `eol=lf`). A CRLF shebang silently breaks the script inside a Linux container — never introduce CRLF.
+
+## Terminology: "Dev Container" vs `devcontainer`
+
+Standardize how the technology is named in prose and docs (README, comments). The variants are **not** interchangeable — they fall into three categories:
+
+- **The concept / proper noun → `Dev Container`** (two words, title case), matching the [official spec](https://containers.dev). Use it for the technology itself and for compound proper nouns: "Dev Container Feature", "Dev Container template", "the Dev Container CLI". Never hyphenate ("dev-container") and never lowercase ("dev container") in prose.
+- **Literal identifiers → keep verbatim, inside backticks.** These are filenames, registry paths, package names, and config keys that must match reality exactly: `devcontainer.json`, `devcontainer-feature.json`, the `devcontainer-feature-pixi` repo/registry path, `@devcontainers/cli`, the `devcontainers` Docker Hub org, `test/pixi/...` paths. **Do not** "fix" these to title case — renaming `devcontainer.json` would be wrong.
+- **The CLI as a runnable tool → `devcontainer`** (lowercase, in backticks) when you mean the command typed at a shell (`devcontainer features test …`), because that is the binary name.
+
+One-line rule: **"Dev Container" in prose; `devcontainer`/`devcontainers` only inside backticks when it is a literal file, command, package, or path.**
 
 ## The bioconda option
 
