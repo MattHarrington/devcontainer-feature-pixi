@@ -228,6 +228,8 @@ scenario from `test/pixi/scenarios.json`:
 - `test/pixi/init_install.sh` — the `init_install` scenario, which checks the
   workspace-bootstrap helper takes the `pixi init` and `pixi install` branches
   correctly.
+- `test/pixi/root_user.sh` — the `root_user` scenario, which checks the
+  post-create helper handles a `root` `remoteUser` without requiring `sudo`.
 - `test/pixi/exclude_newer.sh` — the `exclude_newer` scenario, which sets
   `exclude-newer: 7d` and checks the helper writes the value into the
   `[workspace]` table of a freshly scaffolded `pixi.toml`, skips the `0d`

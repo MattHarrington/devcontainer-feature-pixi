@@ -7,6 +7,7 @@
 
 set -e
 
+# shellcheck source=/dev/null
 source dev-container-features-test-lib
 
 check "pixi is on PATH"        bash -c "command -v pixi"

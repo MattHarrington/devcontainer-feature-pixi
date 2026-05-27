@@ -1,4 +1,5 @@
 #!/bin/bash
+# shellcheck disable=SC2016
 
 # Scenario test for the 'pixi' feature's 'exclude-newer' option.
 #
@@ -25,6 +26,7 @@
 
 set -e
 
+# shellcheck source=/dev/null
 source dev-container-features-test-lib
 
 HELPER=/usr/local/share/pixi/post-create.sh

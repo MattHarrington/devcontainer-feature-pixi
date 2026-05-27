@@ -12,7 +12,7 @@
 set -e
 
 # ---------------------------------------------------------------------------
-# Options (declared in devcontainer-feature.json). The dev container CLI passes
+# Options (declared in devcontainer-feature.json). The Dev Container CLI passes
 # each option to this script as an uppercased environment variable.
 # ---------------------------------------------------------------------------
 PIXI_VERSION="${VERSION:-latest}"
@@ -60,8 +60,14 @@ install_packages() {
 
 missing=""
 command -v tar >/dev/null 2>&1 || missing="${missing} tar"
+has_ca_certificates() {
+    [ -s /etc/ssl/certs/ca-certificates.crt ] ||
+        [ -s /etc/pki/tls/certs/ca-bundle.crt ] ||
+        [ -s /etc/ssl/cert.pem ]
+}
+has_ca_certificates || missing="${missing} ca-certificates"
 if ! command -v curl >/dev/null 2>&1 && ! command -v wget >/dev/null 2>&1; then
-    missing="${missing} ca-certificates curl"
+    missing="${missing} curl"
 fi
 if [ -n "${missing}" ]; then
     printf "Installing prerequisites: %s\n" "${missing}"
