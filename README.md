@@ -27,6 +27,10 @@ built on top of those three base images. More generally, any base image that
 supplies `sudo` (which the `postCreateCommand` uses to chown the `.pixi` mount)
 will probably work too.
 
+`pixi` itself works in Alpine containers, but Alpine may not be very useful for
+some pixi projects. Many packages that pixi can install expect `glibc`, while
+Alpine uses `musl`.
+
 On first create the Feature also mounts a persistent package cache at the
 workspace `.pixi` and bootstraps the workspace as a pixi project — see
 [The `.pixi` mount](#the-pixi-mount) and
@@ -61,7 +65,7 @@ Reference the Feature from your `devcontainer.json` by its registry identifier:
     "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
     "initializeCommand": "mkdir -p ${localWorkspaceFolder}/.pixi",
     "features": {
-        "ghcr.io/MattHarrington/devcontainer-feature-pixi/pixi:1": {
+        "ghcr.io/MattHarrington/devcontainer-feature-pixi/pixi:0.4": {
             "version": "latest"
         }
     }
@@ -80,7 +84,7 @@ Reference the Feature from your `devcontainer.json` by its registry identifier:
 
 ```jsonc
 "features": {
-    "ghcr.io/MattHarrington/devcontainer-feature-pixi/pixi:1": {
+    "ghcr.io/MattHarrington/devcontainer-feature-pixi/pixi:0.4": {
         "version": "0.68.0"
     }
 }
@@ -98,7 +102,7 @@ writes it into the `pixi.toml` that `pixi init` generates.
 
 ```jsonc
 "features": {
-    "ghcr.io/MattHarrington/devcontainer-feature-pixi/pixi:1": {
+    "ghcr.io/MattHarrington/devcontainer-feature-pixi/pixi:0.4": {
         "exclude-newer": "7d"
     }
 }
@@ -143,7 +147,7 @@ because Bioconda depends on it and expects it to take precedence.
 
 ```jsonc
 "features": {
-    "ghcr.io/MattHarrington/devcontainer-feature-pixi/pixi:1": {
+    "ghcr.io/MattHarrington/devcontainer-feature-pixi/pixi:0.4": {
         "bioconda": true
     }
 }
