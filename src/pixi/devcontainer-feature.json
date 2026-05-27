@@ -1,7 +1,7 @@
 {
     "name": "pixi",
     "id": "pixi",
-    "version": "0.4.0",
+    "version": "0.4.1",
     "description": "Installs the pixi package manager (https://pixi.sh) as a system-wide binary.",
     "documentationURL": "https://pixi.sh",
     "options": {
@@ -26,7 +26,7 @@
         "bioconda": {
             "type": "boolean",
             "default": false,
-            "description": "Configure the Bioconda channel for new projects by writing a system-wide pixi config at /etc/pixi/config.toml with default-channels = [\"conda-forge\", \"bioconda\"]. Only affects new projects."
+            "description": "Configure the Bioconda channel by writing a system-wide pixi config at /etc/pixi/config.toml with default-channels = [\"conda-forge\", \"bioconda\"]. Only affects new projects."
         }
     },
     "keywords": [

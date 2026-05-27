@@ -65,7 +65,7 @@ Reference the Feature from your `devcontainer.json` by its registry identifier:
     "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
     "initializeCommand": "mkdir -p ${localWorkspaceFolder}/.pixi",
     "features": {
-        "ghcr.io/MattHarrington/devcontainer-feature-pixi/pixi:0.4": {
+        "ghcr.io/MattHarrington/devcontainer-feature-pixi/pixi:0": {
             "version": "latest"
         }
     }
@@ -84,7 +84,7 @@ Reference the Feature from your `devcontainer.json` by its registry identifier:
 
 ```jsonc
 "features": {
-    "ghcr.io/MattHarrington/devcontainer-feature-pixi/pixi:0.4": {
+    "ghcr.io/MattHarrington/devcontainer-feature-pixi/pixi:0": {
         "version": "0.68.0"
     }
 }
@@ -102,7 +102,7 @@ writes it into the `pixi.toml` that `pixi init` generates.
 
 ```jsonc
 "features": {
-    "ghcr.io/MattHarrington/devcontainer-feature-pixi/pixi:0.4": {
+    "ghcr.io/MattHarrington/devcontainer-feature-pixi/pixi:0": {
         "exclude-newer": "7d"
     }
 }
@@ -147,7 +147,7 @@ because Bioconda depends on it and expects it to take precedence.
 
 ```jsonc
 "features": {
-    "ghcr.io/MattHarrington/devcontainer-feature-pixi/pixi:0.4": {
+    "ghcr.io/MattHarrington/devcontainer-feature-pixi/pixi:0": {
         "bioconda": true
     }
 }
