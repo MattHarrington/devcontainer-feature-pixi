@@ -21,7 +21,7 @@ releases. `x86_64` and `aarch64` Linux are supported. Any missing
 prerequisites (`curl`/`wget`, `tar`, `ca-certificates`) are installed
 automatically — `apt-get`, `apk`, `dnf`, `microdnf`, and `yum` base images are
 supported. The examples below use the Ubuntu base, but all three
-[devcontainers base images](https://hub.docker.com/r/microsoft/devcontainers-base)
+[Dev Container base images](https://hub.docker.com/r/microsoft/devcontainers-base)
 — Ubuntu, Debian, and Alpine — are supported, as are any Dev Container templates
 built on top of those three base images. More generally, any base image that
 supplies `sudo` (which the `postCreateCommand` uses to chown the `.pixi` mount)
@@ -170,8 +170,8 @@ extracted conda packages whose names can collide on a case-insensitive
 filesystem (macOS/Windows hosts), which would corrupt a bind-mounted cache. A
 named volume always lives on Docker's case-sensitive Linux filesystem,
 sidestepping this. The tradeoff is that the cache persists but is not shared
-with or visible from the host. `${devcontainerId}` keys the volume to this dev
-container, so it is stable across rebuilds without colliding with other
+with or visible from the host. `${devcontainerId}` keys the volume to this Dev
+Container, so it is stable across rebuilds without colliding with other
 projects.
 
 As a safeguard, the Feature's `postCreateCommand` chowns `.pixi` to the

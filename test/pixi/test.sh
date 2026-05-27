@@ -15,7 +15,7 @@
 set -e
 
 # Provides the 'check' and 'reportResults' commands, bundled with the dev
-# container CLI. See https://github.com/devcontainers/cli/blob/main/docs/features/test.md
+# Dev Container CLI. See https://github.com/devcontainers/cli/blob/main/docs/features/test.md
 # shellcheck source=/dev/null
 source dev-container-features-test-lib
 
