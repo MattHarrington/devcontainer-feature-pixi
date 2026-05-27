@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this repo is
 
-A repo holding a single [Dev Container Feature](https://containers.dev/implementors/features/) for the [pixi](https://pixi.sh) package manager. There is no application code and no build system (no `package.json`); the Feature is a `devcontainer-feature.json` manifest plus two POSIX scripts — `install.sh` (build time) and `post-create.sh` (the `postCreateCommand` helper). The "build" is the dev container CLI consuming the Feature; "test" is the CLI installing it into a real container and running assertions.
+A repo holding a single [Dev Container Feature](https://containers.dev/implementors/features/) for the [pixi](https://pixi.sh) package manager. There is no application code and no build system (no `package.json`); the Feature is a `devcontainer-feature.json` manifest plus two POSIX scripts — `install.sh` (build time) and `post-create.sh` (the `postCreateCommand` helper). The "build" is the Dev Container CLI consuming the Feature; "test" is the CLI installing it into a real container and running assertions.
 
 One Feature lives here:
 
@@ -12,7 +12,7 @@ One Feature lives here:
 
 ## Commands
 
-Tests require the dev container CLI and Docker:
+Tests require the Dev Container CLI and Docker:
 
 ```sh
 npm install -g @devcontainers/cli
@@ -24,15 +24,18 @@ devcontainer features test --features pixi \
 
 There is no separate runner for an individual scenario; `--features <name>` runs that Feature's `test.sh` plus every scenario script (see test layout below).
 
-**Before opening a PR, run the full suite above and confirm every test passes.** The CLI prints a per-scenario summary at the end; every line must read `✅ Passed` (the default-options `pixi` test plus each scenario — currently `pinned_version`, `bioconda`, `mount`, `init_install`, `exclude_newer`). Do not open a PR while any check fails. The local pre-commit validation below is necessary but **not** sufficient — it checks syntax and JSON well-formedness, not behavior, so it does not replace this run.
+**Before opening a PR, run the full suite above and confirm every test passes.** The CLI prints a per-scenario summary at the end; every line must read `✅ Passed` (the default-options `pixi` test plus each scenario — currently `pinned_version`, `bioconda`, `mount`, `init_install`, `root_user`, `exclude_newer`). Do not open a PR while any check fails. The local pre-commit validation below is necessary but **not** sufficient — it checks syntax and JSON well-formedness, not behavior, so it does not replace this run.
 
 Local pre-commit validation used in this repo (no linter is configured beyond these):
 
 ```sh
 python3 -m json.tool src/pixi/devcontainer-feature.json   # JSON well-formedness
+python3 -m json.tool test/pixi/scenarios.json             # JSON well-formedness
 sh -n src/pixi/install.sh src/pixi/post-create.sh         # shell syntax check
+bash -n test/pixi/test.sh test/pixi/*.sh                  # test shell syntax check
 shellcheck src/pixi/install.sh                            # if shellcheck is installed
 shellcheck -s sh src/pixi/post-create.sh                  # if shellcheck is installed
+shellcheck test/pixi/*.sh                                 # if shellcheck is installed
 ```
 
 ## Test harness conventions (requires reading test/ + the CLI docs together)
@@ -84,11 +87,11 @@ The `exclude_newer` scenario verifies this (see test layout). Like `init_install
 
 The Feature declares a `mounts` entry in `devcontainer-feature.json` that attaches a **named Docker volume** (`pixi-${devcontainerId}`) at `${containerWorkspaceFolder}/.pixi`, so pixi's package cache and per-project environments persist across container rebuilds.
 
-It is deliberately a named volume, **not a host bind mount**. `.pixi` holds extracted conda packages, and conda package names can collide on a case-insensitive filesystem (macOS/Windows hosts), which corrupts a bind-mounted cache. A named volume always lives on Docker's case-sensitive Linux filesystem, sidestepping this. The tradeoff is that the cache persists but is not shared with / visible from the host. `${devcontainerId}` keys the volume to this dev container so it is stable across rebuilds without colliding with other projects.
+It is deliberately a named volume, **not a host bind mount**. `.pixi` holds extracted conda packages, and conda package names can collide on a case-insensitive filesystem (macOS/Windows hosts), which corrupts a bind-mounted cache. A named volume always lives on Docker's case-sensitive Linux filesystem, sidestepping this. The tradeoff is that the cache persists but is not shared with / visible from the host. `${devcontainerId}` keys the volume to this Dev Container so it is stable across rebuilds without colliding with other projects.
 
 A Feature cannot create the **host-side** mount point, so the consuming `devcontainer.json` is required to add `"initializeCommand": "mkdir -p ${localWorkspaceFolder}/.pixi"` (`initializeCommand` runs on the host before the container is created — the only lifecycle hook early enough). If it is omitted and the workspace has no `.pixi` directory, Docker creates the host-side mount point itself, owned by `root`, leaving a `root`-owned `.pixi` in the user's workspace after the container stops that they might need elevated privileges to remove. This is the user's responsibility, documented in the README; the Feature cannot enforce it.
 
-Docker creates named-volume mount points owned by `root`, so a non-root dev container user cannot write to `.pixi` as mounted. Ownership is fixed by the **`postCreateCommand`** declared in `devcontainer-feature.json`, **not** in `install.sh`. This must run post-create rather than at build time: `install.sh` runs as root during the image build *before* the volume is mounted, so it cannot see or chown the mount. `postCreateCommand` runs on the live container after the volume is attached, as the (non-root) `remoteUser` — hence `sudo` (passwordless sudo is provided by the standard base images / the `common-utils` Feature this one `installsAfter`). Unlike `install.sh`, lifecycle commands are part of the Feature metadata, so the CLI *does* substitute `${containerWorkspaceFolder}` there. The chown is the first thing the `post-create.sh` helper does (see "Workspace bootstrap").
+Docker creates named-volume mount points owned by `root`, so a non-root Dev Container user cannot write to `.pixi` as mounted. Ownership is fixed by the **`postCreateCommand`** declared in `devcontainer-feature.json`, **not** in `install.sh`. This must run post-create rather than at build time: `install.sh` runs as root during the image build *before* the volume is mounted, so it cannot see or chown the mount. `postCreateCommand` runs on the live container after the volume is attached, as the (non-root) `remoteUser` — hence `sudo` (passwordless sudo is provided by the standard base images / the `common-utils` Feature this one `installsAfter`). Unlike `install.sh`, lifecycle commands are part of the Feature metadata, so the CLI *does* substitute `${containerWorkspaceFolder}` there. The chown is the first thing the `post-create.sh` helper does (see "Workspace bootstrap").
 
 The `mount` scenario verifies this end-to-end (`.pixi` exists in the workspace and appears as its own mount point in `/proc/mounts`).
 

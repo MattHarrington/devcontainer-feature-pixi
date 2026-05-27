@@ -27,6 +27,13 @@
             "pixi": {}
         }
     },
+    "root_user": {
+        "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+        "remoteUser": "root",
+        "features": {
+            "pixi": {}
+        }
+    },
     "exclude_newer": {
         "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
         "features": {

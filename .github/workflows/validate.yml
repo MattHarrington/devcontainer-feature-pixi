@@ -1,10 +1,13 @@
-name: "Validate devcontainer-feature.json files"
+name: "Validate"
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
   pull_request:
 
 jobs:
-  validate:
+  validate-feature-metadata:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -14,3 +17,36 @@ jobs:
         with:
           validate-only: "true"
           base-path-to-features: "./src"
+
+  validate-local-files:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: "Validate JSON files"
+        run: |
+          python3 -m json.tool src/pixi/devcontainer-feature.json
+          python3 -m json.tool test/pixi/scenarios.json
+
+      - name: "Validate shell syntax"
+        run: |
+          sh -n src/pixi/install.sh src/pixi/post-create.sh
+          bash -n test/pixi/test.sh \
+            test/pixi/bioconda.sh \
+            test/pixi/pinned_version.sh \
+            test/pixi/exclude_newer.sh \
+            test/pixi/init_install.sh \
+            test/pixi/mount.sh \
+            test/pixi/root_user.sh
+
+      - name: "Run shellcheck"
+        run: |
+          shellcheck src/pixi/install.sh
+          shellcheck -s sh src/pixi/post-create.sh
+          shellcheck test/pixi/test.sh \
+            test/pixi/bioconda.sh \
+            test/pixi/pinned_version.sh \
+            test/pixi/exclude_newer.sh \
+            test/pixi/init_install.sh \
+            test/pixi/mount.sh \
+            test/pixi/root_user.sh

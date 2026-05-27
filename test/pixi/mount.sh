@@ -1,4 +1,5 @@
 #!/bin/bash
+# shellcheck disable=SC2016
 
 # Scenario test for the 'pixi' feature's named-volume mount.
 #
@@ -19,6 +20,7 @@
 
 set -e
 
+# shellcheck source=/dev/null
 source dev-container-features-test-lib
 
 check "pixi is on PATH"        bash -c "command -v pixi"

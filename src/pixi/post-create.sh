@@ -14,7 +14,8 @@
 #      and, when the 'exclude-newer' option is set, record it in the new
 #      pixi.toml.
 #
-# Runs as the (possibly non-root) remoteUser, hence 'sudo' for the chown.
+# Runs as the (possibly non-root) remoteUser, hence privileged ownership repair
+# when needed.
 # See: https://containers.dev/implementors/features/#lifecycle
 #-------------------------------------------------------------------------------------------------------------
 set -eu
@@ -35,7 +36,15 @@ cd "$workspace"
 # 1. Own the mounted .pixi volume so the remoteUser can write the cache.
 # ---------------------------------------------------------------------------
 if [ -d "$workspace/.pixi" ]; then
-    sudo chown "$(id -un):$(id -gn)" "$workspace/.pixi"
+    owner="$(id -un):$(id -gn)"
+    if [ "$(id -u)" -eq 0 ]; then
+        chown "$owner" "$workspace/.pixi"
+    elif command -v sudo >/dev/null 2>&1; then
+        sudo chown "$owner" "$workspace/.pixi"
+    else
+        printf "pixi: cannot chown .pixi; sudo is not available for user '%s'.\n" "$(id -un)" >&2
+        exit 1
+    fi
 fi
 
 # ---------------------------------------------------------------------------
