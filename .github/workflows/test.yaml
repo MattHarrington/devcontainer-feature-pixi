@@ -15,7 +15,7 @@ jobs:
           - pixi
         baseImage:
           # pixi's post-create helper needs sudo to chown the .pixi volume mount,
-          # so the Feature targets a devcontainers-style base (which ships sudo via
+          # so the Feature targets a Dev Container-style base (which ships sudo via
           # common-utils). Bare debian:latest/ubuntu:latest have no sudo and fail.
           - mcr.microsoft.com/devcontainers/base:ubuntu
           - mcr.microsoft.com/devcontainers/base:alpine
@@ -23,7 +23,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: "Install latest devcontainer CLI"
+      - name: "Install latest Dev Container CLI"
         run: npm install -g @devcontainers/cli
 
       - name: "Generating tests for '${{ matrix.features }}' against '${{ matrix.baseImage }}'"
@@ -38,7 +38,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: "Install latest devcontainer CLI"
+      - name: "Install latest Dev Container CLI"
         run: npm install -g @devcontainers/cli
 
       - name: "Generating tests for '${{ matrix.features }}' scenarios"
@@ -49,7 +49,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: "Install latest devcontainer CLI"
+      - name: "Install latest Dev Container CLI"
         run: npm install -g @devcontainers/cli
 
       - name: "Testing global scenarios"
