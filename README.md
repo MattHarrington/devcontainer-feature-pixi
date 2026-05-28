@@ -92,6 +92,16 @@ Reference the Feature from your `devcontainer.json` by its registry identifier:
 }
 ```
 
+### Windows Docker Desktop setup
+
+Docker Desktop on Windows recommends the WSL 2 backend. If you have trouble
+launching Dev Containers on Windows — including Dev Containers that do not use
+this Feature — check Docker Desktop's **Settings > Resources > WSL Integration**
+page. WSL integration might need to be enabled for your default WSL
+distribution; see Docker's
+[Enable Docker in a WSL 2 distribution](https://docs.docker.com/desktop/features/wsl/#enable-docker-in-a-wsl-2-distribution)
+documentation.
+
 ### Options
 
 | Option          | Type    | Default  | Description                                                                                         |
