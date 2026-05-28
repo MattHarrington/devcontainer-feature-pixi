@@ -36,12 +36,20 @@ workspace `.pixi` and bootstraps the workspace as a pixi project — see
 [The `.pixi` mount](#the-pixi-mount) and
 [Workspace bootstrap](#workspace-bootstrap) below.
 
-### Required: create the `.pixi` mount point on the host
+### Optional: create the `.pixi` mount point on the host
 
 The Feature mounts a named Docker volume at `${containerWorkspaceFolder}/.pixi`
 (see [The `.pixi` mount](#the-pixi-mount)). If the host-side mount point does not
-already exist, Docker creates it for you — but owned by `root`, which is not
-what you want. To avoid that, your `devcontainer.json` **must** create it before
+already exist, Docker creates it for you.
+
+On Linux and macOS, Docker may create that host-side `.pixi` directory owned by
+`root`. This is mostly cosmetic: it can look odd in `ls -l`, but the Feature
+still chowns the mounted volume inside the container so pixi can write to it.
+Linux users usually cannot `chown` or `chmod` the root-owned host-side mount
+point, but they can remove it with `rm -r .pixi` after the Dev Container is
+stopped.
+
+If a root-owned `.pixi` mount point would bother you, you can create it before
 the container starts with an `initializeCommand`:
 
 ```jsonc
@@ -49,12 +57,25 @@ the container starts with an `initializeCommand`:
 ```
 
 `initializeCommand` runs on the host before the container is created, which is
-the only lifecycle hook that runs early enough. Without it — and if you don't
-already have a `.pixi` directory in your workspace — Docker creates the host-side
-mount point itself, owned by `root`. That leaves a `root`-owned `.pixi`
-directory in your workspace after you stop the Dev Container, which you might
-then need elevated privileges to remove. Creating the directory yourself first
-means it is owned by you. A complete example is shown under [Usage](#usage).
+the only lifecycle hook that runs early enough. Creating the directory yourself
+first means it is owned by you. The command above only works on Linux and macOS.
+On Windows, Docker appears to create the `.pixi` mount point as the regular
+user, so this is usually not an issue.
+
+If you want a cross-platform `initializeCommand`, you can try:
+
+```jsonc
+{
+    // First line is for Windows cmd.exe; second line is for macOS/Linux sh.
+    "initializeCommand": "# 2>NUL & (cd \".pixi\" 2>NUL || mkdir \".pixi\") & if errorlevel 1 exit /B 1 & exit /B 0\nmkdir -p \".pixi\""
+}
+```
+
+This works because the first line starts with `#`, so `sh` treats it as a
+comment on macOS and Linux and then runs the second line. On Windows, the first
+line is interpreted by `cmd.exe` instead, where the redirection and command
+chaining make it create `.pixi` if needed and then exit successfully before the
+macOS/Linux line runs. That lets one `initializeCommand` handle all platforms.
 
 ### Usage
 
@@ -63,7 +84,6 @@ Reference the Feature from your `devcontainer.json` by its registry identifier:
 ```jsonc
 {
     "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
-    "initializeCommand": "mkdir -p ${localWorkspaceFolder}/.pixi",
     "features": {
         "ghcr.io/MattHarrington/devcontainer-feature-pixi/pixi:0": {
             "version": "latest"
@@ -181,9 +201,8 @@ projects.
 As a safeguard, the Feature's `postCreateCommand` chowns `.pixi` to the
 (non-root) container user on the live container after the volume is attached, so
 the cache is writable even when the host-side mount point ended up owned by
-`root`. This is why the `initializeCommand` above matters: it controls
-ownership of the directory left behind on the host, which the in-container chown
-cannot fix.
+`root`. The optional `initializeCommand` above only controls ownership of the
+directory left behind on the host, which the in-container chown cannot fix.
 
 If you already have a `.pixi` directory at the workspace root, Docker mounts its
 volume **on top of** it, masking the original contents for the life of the
@@ -191,11 +210,9 @@ container — only the volume is visible at that path while the container runs.
 When the container shuts down, Docker unmounts the volume and your original
 `.pixi` directory becomes visible again, untouched.
 
-> **Remember:** add
-> `"initializeCommand": "mkdir -p ${localWorkspaceFolder}/.pixi"` to your
-> `devcontainer.json` so the host-side mount point is owned by you rather than
-> by `root` (see
-> [Required: create the `.pixi` mount point on the host](#required-create-the-pixi-mount-point-on-the-host)).
+> **Tip:** if a root-owned `.pixi` host-side mount point would bother you, add
+> an `initializeCommand` to your `devcontainer.json` to create it first (see
+> [Optional: create the `.pixi` mount point on the host](#optional-create-the-pixi-mount-point-on-the-host)).
 
 ### Workspace bootstrap
 
