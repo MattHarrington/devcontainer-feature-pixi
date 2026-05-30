@@ -97,7 +97,7 @@ pixi config key. It is applied only after `pixi init` creates a new
 `pixi.toml`, and it must be inserted inside the `[workspace]` table. The
 default `0d` is treated as disabled and should write no key.
 
-The `.pixi` cache is a named Docker volume mounted at
+The `.pixi` directory is a named Docker volume mounted at
 `${containerWorkspaceFolder}/.pixi`. It is deliberately not a host bind mount.
 `post-create.sh` chowns that mounted directory after the container is created,
 because `install.sh` runs before the volume exists.
