@@ -24,22 +24,23 @@ supported. The examples below use the Ubuntu base, but all three
 [Dev Container base images](https://hub.docker.com/r/microsoft/devcontainers-base)
 — Ubuntu, Debian, and Alpine — are supported, as are any Dev Container templates
 built on top of those three base images. More generally, any base image that
-supplies `sudo` (which the `postCreateCommand` uses to chown the `.pixi` mount)
-will probably work too.
+supplies `sudo` (which the `postCreateCommand` uses to chown the named volume
+mounts) will probably work too.
 
 `pixi` itself works in Alpine containers, but Alpine may not be very useful for
 some pixi projects. Many packages that pixi can install expect `glibc`, while
 Alpine uses `musl`.
 
-On first create the Feature also mounts a persistent package cache at the
-workspace `.pixi` and bootstraps the workspace as a pixi project — see
-[The `.pixi` mount](#the-pixi-mount) and
+On first create the Feature also mounts the workspace `.pixi` directory as
+persistent project storage and mounts the pixi cache at `/mnt/pixi-cache`, then
+bootstraps the workspace as a pixi project; see
+[The persistent mounts](#the-persistent-mounts) and
 [Workspace bootstrap](#workspace-bootstrap) below.
 
 ### Optional: create the `.pixi` mount point on the host
 
 The Feature mounts a named Docker volume at `${containerWorkspaceFolder}/.pixi`
-(see [The `.pixi` mount](#the-pixi-mount)). If the host-side mount point does not
+(see [The persistent mounts](#the-persistent-mounts)). If the host-side mount point does not
 already exist, Docker creates it for you.
 
 On Linux and macOS, Docker may create that host-side `.pixi` directory owned by
@@ -193,26 +194,33 @@ channels it declares. Note also that per-workspace settings such as
 a project's `pixi.toml`/`pyproject.toml` `[workspace]` table, which is exactly
 where the [`exclude-newer` option](#the-exclude-newer-option) writes them.
 
-### The `.pixi` mount
+### The persistent mounts
 
-The Feature mounts a **named Docker volume** (`pixi-${devcontainerId}`) at
-`${containerWorkspaceFolder}/.pixi`, so pixi's package cache and per-project
-environments persist across container rebuilds.
+The Feature mounts two **named Docker volumes**:
 
-It is deliberately a named volume, **not** a host bind mount. `.pixi` holds
+- `pixi-${devcontainerId}` at `${containerWorkspaceFolder}/.pixi`, so pixi's
+  per-project environments and other `.pixi` project data persist across
+  container rebuilds.
+- `pixi-cache` at `/mnt/pixi-cache` in the container, with `PIXI_CACHE_DIR` set
+  to that path, so pixi's cache persists outside
+  the container filesystem.
+
+These are deliberately named volumes, **not** host bind mounts. `.pixi` may hold
 extracted conda packages whose names can collide on a case-insensitive
-filesystem (macOS/Windows hosts), which would corrupt a bind-mounted cache. A
-named volume always lives on Docker's case-sensitive Linux filesystem,
-sidestepping this. The tradeoff is that the cache persists but is not shared
-with or visible from the host. `${devcontainerId}` keys the volume to this Dev
-Container, so it is stable across rebuilds without colliding with other
-projects.
+filesystem (macOS/Windows hosts), which would corrupt a bind-mounted `.pixi`
+directory. A named volume always lives on Docker's case-sensitive Linux
+filesystem, sidestepping this. The tradeoff is that the volume contents persist
+but are not shared with or visible from the host. `${devcontainerId}` keys the
+`.pixi` volume to this Dev Container, so it is stable across rebuilds without
+colliding with other projects. The `pixi-cache` volume uses a fixed source name
+so it can be shared by Dev Containers on the same Docker host.
 
-As a safeguard, the Feature's `postCreateCommand` chowns `.pixi` to the
-(non-root) container user on the live container after the volume is attached, so
-the cache is writable even when the host-side mount point ended up owned by
-`root`. The optional `initializeCommand` above only controls ownership of the
-directory left behind on the host, which the in-container chown cannot fix.
+As a safeguard, the Feature's `postCreateCommand` chowns both mounted
+directories to the (non-root) container user on the live container after the
+volumes are attached, so they are writable even when the mount points ended up
+owned by `root`. The optional `initializeCommand` above only controls ownership
+of the directory left behind on the host for `.pixi`, which the in-container
+chown cannot fix.
 
 If you already have a `.pixi` directory at the workspace root, Docker mounts its
 volume **on top of** it, masking the original contents for the life of the
@@ -254,8 +262,8 @@ scenario from `test/pixi/scenarios.json`:
   `version` to an exact release.
 - `test/pixi/bioconda.sh` — the `bioconda` scenario, which sets `bioconda: true`
   and checks the installed `pixi` binary reads the Bioconda channel config.
-- `test/pixi/mount.sh` — the `mount` scenario, which checks `.pixi` exists in
-  the workspace and appears as its own mount point.
+- `test/pixi/mount.sh` — the `mount` scenario, which checks `.pixi` and
+  `PIXI_CACHE_DIR` exist and appear as their own mount points.
 - `test/pixi/init_install.sh` — the `init_install` scenario, which checks the
   workspace-bootstrap helper takes the `pixi init` and `pixi install` branches
   correctly.

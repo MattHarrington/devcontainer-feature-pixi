@@ -8,7 +8,8 @@ A repo holding a single [Dev Container Feature](https://containers.dev/implement
 
 One Feature lives here:
 
-- **`src/pixi`** — installs the `pixi` binary system-wide to `/usr/local/bin/pixi` by downloading the prebuilt static musl release from `prefix-dev/pixi`. Its `bioconda` boolean option (default `false`) additionally writes a system-wide pixi config at `/etc/pixi/config.toml` (`default-channels = ["conda-forge", "bioconda"]`). Its `exclude-newer` string option (default `0d`) records a package-cooldown cutoff in a newly scaffolded project's `pixi.toml` (see "The exclude-newer option"). It also mounts a named Docker volume at the workspace `.pixi` so the package cache persists across rebuilds, and on first create bootstraps the workspace as a pixi project (see "The .pixi mount" and "Workspace bootstrap").
+- **`src/pixi`** — installs the `pixi` binary system-wide to `/usr/local/bin/pixi` by downloading the prebuilt static musl release from `prefix-dev/pixi`. Its `bioconda` boolean option (default `false`) additionally writes a system-wide pixi config at `/etc/pixi/config.toml` (`default-channels = ["conda-forge", "bioconda"]`). Its `exclude-newer` string option (default `0d`) records a package-cooldown cutoff in a newly scaffolded project's `pixi.toml` (see "The exclude-newer option"). It also mounts the workspace `.pixi` directory as persistent project storage.
+  Separately, it mounts a pixi cache volume, then on first create bootstraps the workspace as a pixi project (see "The .pixi mount" and "Workspace bootstrap").
 
 ## Commands
 
@@ -85,9 +86,9 @@ The `exclude_newer` scenario verifies this (see test layout). Like `init_install
 
 ## The .pixi mount
 
-The Feature declares a `mounts` entry in `devcontainer-feature.json` that attaches a **named Docker volume** (`pixi-${devcontainerId}`) at `${containerWorkspaceFolder}/.pixi`, so pixi's package cache and per-project environments persist across container rebuilds.
+The Feature declares a `mounts` entry in `devcontainer-feature.json` that attaches a **named Docker volume** (`pixi-${devcontainerId}`) at `${containerWorkspaceFolder}/.pixi`, so pixi's per-project environments and other `.pixi` project data persist across container rebuilds.
 
-It is deliberately a named volume, **not a host bind mount**. `.pixi` holds extracted conda packages, and conda package names can collide on a case-insensitive filesystem (macOS/Windows hosts), which corrupts a bind-mounted cache. A named volume always lives on Docker's case-sensitive Linux filesystem, sidestepping this. The tradeoff is that the cache persists but is not shared with / visible from the host. `${devcontainerId}` keys the volume to this Dev Container so it is stable across rebuilds without colliding with other projects.
+It is deliberately a named volume, **not a host bind mount**. `.pixi` may hold extracted conda packages, and conda package names can collide on a case-insensitive filesystem (macOS/Windows hosts), which corrupts a bind-mounted `.pixi` directory. A named volume always lives on Docker's case-sensitive Linux filesystem, sidestepping this. The tradeoff is that the `.pixi` contents persist but are not shared with / visible from the host. `${devcontainerId}` keys the volume to this Dev Container so it is stable across rebuilds without colliding with other projects.
 
 A Feature cannot create the **host-side** mount point, so the consuming `devcontainer.json` is required to add `"initializeCommand": "mkdir -p ${localWorkspaceFolder}/.pixi"` (`initializeCommand` runs on the host before the container is created — the only lifecycle hook early enough). If it is omitted and the workspace has no `.pixi` directory, Docker creates the host-side mount point itself, owned by `root`, leaving a `root`-owned `.pixi` in the user's workspace after the container stops that they might need elevated privileges to remove. This is the user's responsibility, documented in the README; the Feature cannot enforce it.
 

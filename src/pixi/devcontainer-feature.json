@@ -1,7 +1,7 @@
 {
     "name": "pixi",
     "id": "pixi",
-    "version": "0.4.1",
+    "version": "0.5.0",
     "description": "Installs the pixi package manager (https://pixi.sh) as a system-wide binary.",
     "documentationURL": "https://pixi.sh",
     "options": {
@@ -42,8 +42,16 @@
             "source": "pixi-workspace-${devcontainerId}",
             "target": "${containerWorkspaceFolder}/.pixi",
             "type": "volume"
+        },
+        {
+            "source": "pixi-cache",
+            "target": "/mnt/pixi-cache",
+            "type": "volume"
         }
     ],
+    "containerEnv": {
+        "PIXI_CACHE_DIR": "/mnt/pixi-cache"
+    },
     "postCreateCommand": "/usr/local/share/pixi/post-create.sh \"${containerWorkspaceFolder}\"",
     "installsAfter": [
         "ghcr.io/devcontainers/features/common-utils"
