@@ -4,7 +4,7 @@
 # Scenario test for the 'pixi' feature's postCreateCommand bootstrap helper.
 #
 # The feature ships /usr/local/share/pixi/post-create.sh and wires it into
-# 'postCreateCommand'. The helper chowns the mounted .pixi volume, then either
+# 'postCreateCommand'. The helper chowns the mounted named volumes, then either
 # scaffolds a new project ('pixi init') when no manifest is present or installs
 # the environment ('pixi install') when the workspace is already a pixi project.
 #

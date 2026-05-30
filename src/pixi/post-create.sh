@@ -2,13 +2,13 @@
 #-------------------------------------------------------------------------------------------------------------
 # Dev Container Feature: pixi -- postCreateCommand helper
 #
-# Runs once on the live container after the named '.pixi' volume is mounted.
+# Runs once on the live container after the named volumes are mounted.
 # 'install.sh' copies this script to a fixed path at image build time and
 # devcontainer-feature.json invokes it from 'postCreateCommand'.
 #
 # Responsibilities, in order:
-#   1. Take ownership of the mounted '.pixi' volume (Docker creates the mount
-#      point owned by root, so the non-root remoteUser otherwise cannot write).
+#   1. Take ownership of the mounted named volumes (Docker creates the mount
+#      points owned by root, so the non-root remoteUser otherwise cannot write).
 #   2. Bootstrap the workspace: if it is already a pixi project, install its
 #      environment ('pixi install'); otherwise scaffold a new one ('pixi init')
 #      and, when the 'exclude-newer' option is set, record it in the new
@@ -29,23 +29,32 @@ workspace="${1:?workspace folder argument is required}"
 # from the image rather than passed as an argument). '0d' -- the option default
 # -- means "current time", i.e. no real cutoff, and is treated as "disabled".
 EXCLUDE_NEWER_FILE="/usr/local/share/pixi/exclude-newer"
+PIXI_CACHE_DIR="${PIXI_CACHE_DIR:-/mnt/pixi-cache}"
 
 cd "$workspace"
 
 # ---------------------------------------------------------------------------
-# 1. Own the mounted .pixi volume so the remoteUser can write the cache.
+# 1. Own the mounted named volumes so the remoteUser can write them.
 # ---------------------------------------------------------------------------
-if [ -d "$workspace/.pixi" ]; then
+own_mounted_dir() {
+    dir="$1"
+    label="$2"
+
+    [ -d "$dir" ] || return 0
+
     owner="$(id -un):$(id -gn)"
     if [ "$(id -u)" -eq 0 ]; then
-        chown "$owner" "$workspace/.pixi"
+        chown "$owner" "$dir"
     elif command -v sudo >/dev/null 2>&1; then
-        sudo chown "$owner" "$workspace/.pixi"
+        sudo chown "$owner" "$dir"
     else
-        printf "pixi: cannot chown .pixi; sudo is not available for user '%s'.\n" "$(id -un)" >&2
+        printf "pixi: cannot chown %s; sudo is not available for user '%s'.\n" "$label" "$(id -un)" >&2
         exit 1
     fi
-fi
+}
+
+own_mounted_dir "$workspace/.pixi" ".pixi"
+own_mounted_dir "$PIXI_CACHE_DIR" "\$PIXI_CACHE_DIR"
 
 # ---------------------------------------------------------------------------
 # 2. Bootstrap the workspace as a pixi project.

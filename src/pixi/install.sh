@@ -149,8 +149,8 @@ fi
 # Install the postCreateCommand helper to a fixed path. The feature's source
 # files are only present in this temporary build context, so the helper is
 # copied into the image here; devcontainer-feature.json's 'postCreateCommand'
-# then invokes it by absolute path on the live container (after the .pixi
-# volume is mounted).
+# then invokes it by absolute path on the live container (after the named
+# volumes are mounted).
 # ---------------------------------------------------------------------------
 mkdir -p "$(dirname "${POST_CREATE_DEST}")"
 cp "${POST_CREATE_SRC}" "${POST_CREATE_DEST}"
