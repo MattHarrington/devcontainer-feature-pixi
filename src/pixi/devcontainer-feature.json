@@ -39,7 +39,7 @@
     ],
     "mounts": [
         {
-            "source": "pixi-${devcontainerId}",
+            "source": "pixi-workspace-${devcontainerId}",
             "target": "${containerWorkspaceFolder}/.pixi",
             "type": "volume"
         }
